@@ -1,0 +1,203 @@
+
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SMC Trade Journal</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+      background-color: #f4f4f4;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .container {
+      max-width: 1200px;
+      width: 100%;
+    }
+    h1 {
+      text-align: center;
+    }
+    input[type="text"], input[type="number"], input[type="date"] {
+      width: 100%;
+      box-sizing: border-box;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+      background-color: #fff;
+      table-layout: fixed;
+      word-wrap: break-word;
+    }
+    th, td {
+      border: 1px solid #ccc;
+      padding: 8px;
+      text-align: left;
+      font-size: 14px;
+    }
+    th {
+      background-color: #333;
+      color: #fff;
+    }
+    tr:nth-child(even) { background-color: #f9f9f9; }
+    .button-container {
+      margin-top: 20px;
+      display: flex;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+    .filter {
+      margin-top: 10px;
+      margin-bottom: 10px;
+      text-align: center;
+    }
+    #summaryContainer {
+      background-color: #fff;
+      padding: 10px;
+      border: 1px solid #ccc;
+      margin-top: 20px;
+      display: none;
+    }
+    #chartContainer {
+      margin-top: 30px;
+      width: 100%;
+      max-width: 800px;
+    }
+    input[type="file"] {
+      width: 100%;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>SMC Trade Journal</h1>
+
+    <div class="filter">
+      <label>Search: <input type="text" id="searchInput" placeholder="Search..." /></label>
+    </div>
+
+    <table id="tradeTable">
+      <thead>
+        <tr>
+          <th>No.</th>
+          <th>Date</th>
+          <th>Pair</th>
+          <th>Timeframe</th>
+          <th>Direction</th>
+          <th>HTF Bias</th>
+          <th>CHoCH</th>
+          <th>Inducement</th>
+          <th>Entry Type</th>
+          <th>RR</th>
+          <th>SL</th>
+          <th>TP</th>
+          <th>Result</th>
+          <th>Notes</th>
+          <th>HTF Image</th>
+          <th>LTF Image</th>
+          <th>Delete</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+
+    <div class="button-container">
+      <button id="newRowButton">New Entry</button>
+      <button id="saveButton">Save</button>
+      <button id="summaryButton">Show Summary</button>
+      <button id="exportButton">Export CSV</button>
+    </div>
+
+    <div id="summaryContainer"></div>
+    <div id="chartContainer">
+      <canvas id="tradeChart"></canvas>
+    </div>
+  </div>
+
+  <script>
+    const tbody = document.querySelector("#tradeTable tbody");
+
+    function createRow(data = {}, index = tbody.rows.length + 1) {
+      const row = document.createElement("tr");
+      const numberCell = document.createElement("td");
+      numberCell.textContent = index;
+      row.appendChild(numberCell);
+
+      const fields = ["date", "pair", "timeframe", "direction", "htfBias",
+        "choch", "inducement", "entryType", "rr", "sl", "tp", "result", "notes"];
+
+      fields.forEach(field => {
+        const td = document.createElement("td");
+        if (field === "choch" || field === "inducement") {
+          const checkbox = document.createElement("input");
+          checkbox.type = "checkbox";
+          checkbox.checked = data[field] || false;
+          td.appendChild(checkbox);
+        } else {
+          const input = document.createElement("input");
+          input.type = (field === "rr") ? "text" : (field === "sl" || field === "tp") ? "number" : (field === "date") ? "date" : "text";
+          if (field === "rr") input.placeholder = "1:2";
+          input.value = data[field] || "";
+          td.appendChild(input);
+        }
+        row.appendChild(td);
+      });
+
+      // HTF image
+      let htfCell = document.createElement("td");
+      let htfInput = document.createElement("input");
+      htfInput.type = "file";
+      htfInput.accept = "image/*";
+      htfCell.appendChild(htfInput);
+      row.appendChild(htfCell);
+
+      // LTF image
+      let ltfCell = document.createElement("td");
+      let ltfInput = document.createElement("input");
+      ltfInput.type = "file";
+      ltfInput.accept = "image/*";
+      ltfCell.appendChild(ltfInput);
+      row.appendChild(ltfCell);
+
+      const deleteCell = document.createElement("td");
+      const delBtn = document.createElement("button");
+      delBtn.textContent = "🗑️";
+      delBtn.onclick = () => {
+        tbody.removeChild(row);
+        updateNumbers();
+      };
+      deleteCell.appendChild(delBtn);
+      row.appendChild(deleteCell);
+
+      tbody.appendChild(row);
+      row.scrollIntoView({ behavior: 'smooth' });
+    }
+
+    function updateNumbers() {
+      Array.from(tbody.rows).forEach((row, i) => row.cells[0].textContent = i + 1);
+    }
+
+    function isComplete(row) {
+      const inputs = row.querySelectorAll("input[type='text'], input[type='number'], input[type='date']");
+      return [...inputs].every(i => i.value.trim());
+    }
+
+    document.getElementById("newRowButton").onclick = () => {
+      const last = tbody.lastElementChild;
+      if (last && !isComplete(last)) return alert("Please complete current entry.");
+      createRow();
+    };
+
+    const saved = JSON.parse(localStorage.getItem("smcTradeJournal") || "[]");
+    if (saved.length) saved.forEach((d, i) => createRow(d, i + 1));
+    else createRow();
+  </script>
+</body>
+</html>
